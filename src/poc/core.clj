@@ -1,4 +1,4 @@
-(ns clojurail.core
+(ns poc.core
   (:require [ring.middleware.cookies :as cookies]
             [ring.adapter.jetty :as jetty]
             [ring.middleware.params :as middleware.params]

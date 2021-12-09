@@ -1,4 +1,4 @@
-# clojurail
+# Reactive backend POC
 
 A Clojure library designed to ... well, that part is up to you.
 
