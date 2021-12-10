@@ -25,7 +25,7 @@
     (prn "URI " (-> request :uri))
     (try (let [uri (-> request :uri)
                actions (router routes uri)
-               ctx (atom dependencies)
+               ctx (atom {})
                response-promise (promise)
                subscribers (atom {})
                subscribe (fn [k f]
@@ -38,7 +38,7 @@
                            (when-not (= oldv newv)
                              (let [actions (get @subscribers key)
                                    results (for [a actions]
-                                             (a newv))
+                                             (a dependencies newv))
                                    rs (into {} (for [r results]
                                                  (reduce (fn [s [k v]]
                                                            (cond
@@ -46,7 +46,7 @@
                                                              :else (assoc s k v))) new-state r)))]
                                (reset! watched rs)))))
                deliver-response [:response
-                                 (fn [new-state]
+                                 (fn [_ new-state]
                                    (prn "response " new-state)
                                    (deliver response-promise new-state)
                                    nil)]]
@@ -54,7 +54,6 @@
              (subscribe k f)
              (add-watch ctx k watcher))
            (swap! ctx assoc :request request)
-           ;(prn "promise" @response-promise)
            (deref response-promise 1000 {:status 500
                                          :body   "request timed out"}))
          (catch Exception e (ex-data e)))))
@@ -71,13 +70,13 @@
 
 (def cookies
   [:request
-   (fn [new-state]
+   (fn [_ new-state]
      (prn "cookies" new-state)
      {:request (parse-request-cookies new-state)})])
 
 (def params
   [:request
-   (fn [new-state]
+   (fn [_ new-state]
      (prn "params" new-state)
      (let [f #(keywordize-keys
                 ((middleware.params/wrap-params identity) %))]
@@ -85,20 +84,20 @@
 
 (def action
   [:request
-   (fn [new-state]
+   (fn [_ new-state]
      (prn "action" new-state)
      {:query {:select :* :from :users}})])
 
 (def db
   [:query
-   (fn [new-state]
+   (fn [ctx new-state]
      (prn "db" new-state)
-     {:db-data ["here" "we" "are"]})])
+     {:db-data (str ctx)})])
 
 
 (def view
   [:db-data
-   (fn [new-state]
+   (fn [_ new-state]
      (prn "view" new-state)
      {:response {:status 200
                  :body   (str new-state)}})])
@@ -114,7 +113,7 @@
 
 (def image
   [:request
-   (fn [nw]
+   (fn [_ _]
      {:response {:body "Hello image"}})])
 
 (def routes
