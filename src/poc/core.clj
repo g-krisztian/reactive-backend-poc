@@ -1,29 +1,26 @@
 (ns poc.core
-  (:require [ring.middleware.cookies :as cookies]
-            [ring.adapter.jetty :as jetty]
-            [ring.middleware.params :as middleware.params]
-            [clojure.walk :refer [keywordize-keys]]))
-
-(defn- sub-router
-  ([routes uri-seq]
-   (loop [routes routes uri-seq uri-seq actions []]
-     (let [route (filter #(#{(first uri-seq)} (first %)) routes)
-           [[uri act & sub-routes]] route]
-       (cond
-         (empty? uri-seq) actions
-         uri (recur sub-routes (rest uri-seq) (into actions act))
-         :else (throw (ex-info "Not found" {:status 404 :body "not found"})))))))
+  (:require
+    [ring.adapter.jetty :as jetty]
+    [ring.middleware.cookies :as cookies]
+    [ring.middleware.params :as middleware.params]
+    [clojure.walk :refer [keywordize-keys]]))
 
 (defn router
   [routes uri]
-  (let [seq-uri (re-seq #"/[a-zA-Z0-9]*" uri)]
-    (sub-router routes seq-uri)))
+  (loop [routes routes uri-seq (re-seq #"/[a-zA-Z0-9]*" uri) actions []]
+    (let [route (filter #(#{(first uri-seq)} (first %)) routes)
+          [[uri act & sub-routes]] route]
+      (cond
+        (empty? uri-seq) actions
+        uri (recur sub-routes (rest uri-seq) (into actions act))
+        :else (throw (ex-info "Not found" {:status 404 :body "not found"}))))))
 
 (defn deep-merge [& maps]
-  (apply merge-with (fn [& args]
-                      (if (every? map? args)
-                        (apply deep-merge args)
-                        (last args)))
+  (apply merge-with
+         (fn [& args]
+           (if (every? map? args)
+             (apply deep-merge args)
+             (last args)))
          maps))
 
 (defn watcher-fn
@@ -59,7 +56,7 @@
                subscribers (reduce subscribe {} (conj actions (deliver-response response-promise)))]
            (doseq [[k _] subscribers]
              (add-watch ctx k (watcher-fn dependencies subscribers)))
-           (swap! ctx assoc :request request)
+           (reset! ctx {:request request})
            (deref response-promise 1000 {:status 500
                                          :body   "request timed out"}))
          (catch Exception e (ex-data e)))))
@@ -88,12 +85,12 @@
 
 (def action
   [:request
-   (fn [_ new-state]
+   (fn [_ _]
      {:query {:select :* :from :users}})])
 
 (def db
   [:query
-   (fn [ctx new-state]
+   (fn [ctx _]
      {:db-data (str ctx)})])
 
 (def view
@@ -104,7 +101,7 @@
 
 (def cont
   [:request
-   (fn [ctx new-state]
+   (fn [ctx _]
      {:response {:status 200
                  :body   (str ctx)}})])
 
@@ -134,10 +131,13 @@
     ["/ctx" context]
     ["/image" [image]]]])
 
-(= [] (router routes "/"))
-(= api (router routes "/api"))
-(= (concat api message) (router routes "/api/message"))
-(= api (router routes "/api/image"))
+(comment
+  (= [] (router routes "/"))
+  (= api (router routes "/api"))
+  (= (concat api message) (router routes "/api/message"))
+  (= (concat api context) (router routes "/api/ctx"))
+  (= (concat api context [cont]) (router routes "/api/ctx/something"))
+  (= (conj api image) (router routes "/api/image")))
 
 (defn -main
   [& _]
@@ -146,4 +146,4 @@
 (comment
   (time (dotimes [_ 50000]
           ((handler {} routes) {:uri     "/api/message"
-                                :headers {:cookie "session-id=sseessiioonn"}}))))
+                                :headers {:cookie "session-id=sseeessiioonn"}}))))
