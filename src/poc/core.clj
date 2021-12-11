@@ -22,25 +22,22 @@
 (defn watcher-fn
   [dependencies subscribers]
   (fn [key watched old-state new-state]
-    (prn "watcher " key)
     (let [oldv (get old-state key)
           newv (get new-state key)]
       (when-not (= oldv newv)
         (let [actions (get subscribers key)
-              results (for [a actions]
-                        (a dependencies newv))
+              results (map #(% dependencies newv) actions)
               rs (into {} (for [r results]
-                            (reduce (fn [s [k v]]
+                            (reduce (fn [acc [k v]]
                                       (cond
-                                        (map? v) (update s k merge v)
-                                        :else (assoc s k v))) new-state r)))]
+                                        (map? v) (update acc k merge v)
+                                        :else (assoc acc k v))) new-state r)))]
           (reset! watched rs))))))
 
-(defn  deliver-response
+(defn deliver-response
   [response-promise]
   [:response
    (fn [_ new-state]
-     (prn "response " new-state)
      (deliver response-promise new-state)
      nil)])
 
@@ -52,7 +49,6 @@
 (defn handler
   [dependencies routes]
   (fn [request]
-    (prn "URI " (-> request :uri))
     (try (let [uri (-> request :uri)
                actions (router routes uri)
                ctx (atom {})
@@ -78,13 +74,11 @@
 (def cookies
   [:request
    (fn [_ new-state]
-     (prn "cookies" new-state)
      {:request (parse-request-cookies new-state)})])
 
 (def params
   [:request
    (fn [_ new-state]
-     (prn "params" new-state)
      (let [f #(keywordize-keys
                 ((middleware.params/wrap-params identity) %))]
        {:request (f new-state)}))])
@@ -92,20 +86,16 @@
 (def action
   [:request
    (fn [_ new-state]
-     (prn "action" new-state)
      {:query {:select :* :from :users}})])
 
 (def db
   [:query
    (fn [ctx new-state]
-     (prn "db" new-state)
      {:db-data (str ctx)})])
-
 
 (def view
   [:db-data
    (fn [_ new-state]
-     (prn "view" new-state)
      {:response {:status 200
                  :body   (str new-state)}})])
 
@@ -137,3 +127,6 @@
 (defn -main
   [& _]
   (jetty/run-jetty (handler {:db {:datasource :nil}} routes) {:port 8080}))
+
+(comment
+  (time (dotimes [_ 50000] ((handler {} routes) {:uri "/api/message"}))))
