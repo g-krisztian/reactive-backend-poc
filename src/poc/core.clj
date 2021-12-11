@@ -19,6 +19,13 @@
   (let [seq-uri (re-seq #"/[a-zA-Z0-9]*" uri)]
     (sub-router routes seq-uri)))
 
+(defn deep-merge [& maps]
+  (apply merge-with (fn [& args]
+                      (if (every? map? args)
+                        (apply deep-merge args)
+                        (last args)))
+         maps))
+
 (defn watcher-fn
   [dependencies subscribers]
   (fn [key watched old-state new-state]
@@ -27,11 +34,7 @@
       (when-not (= oldv newv)
         (let [actions (get subscribers key)
               results (map #(% dependencies newv) actions)
-              rs (into {} (for [r results]
-                            (reduce (fn [acc [k v]]
-                                      (cond
-                                        (map? v) (update acc k merge v)
-                                        :else (assoc acc k v))) new-state r)))]
+              rs (apply deep-merge new-state results)]
           (reset! watched rs))))))
 
 (defn deliver-response
@@ -99,6 +102,12 @@
      {:response {:status 200
                  :body   (str new-state)}})])
 
+(def cont
+  [:request
+   (fn [ctx new-state]
+     {:response {:status 200
+                 :body   (str ctx)}})])
+
 (def api
   [cookies
    params])
@@ -107,6 +116,11 @@
   [action
    db
    view])
+
+(def context
+  [action
+   db
+   cont])
 
 (def image
   [:request
@@ -117,6 +131,7 @@
   [["/" []]
    ["/api" api
     ["/message" message]
+    ["/ctx" context]
     ["/image" [image]]]])
 
 (= [] (router routes "/"))
@@ -129,4 +144,6 @@
   (jetty/run-jetty (handler {:db {:datasource :nil}} routes) {:port 8080}))
 
 (comment
-  (time (dotimes [_ 50000] ((handler {} routes) {:uri "/api/message"}))))
+  (time (dotimes [_ 50000]
+          ((handler {} routes) {:uri     "/api/message"
+                                :headers {:cookie "session-id=sseessiioonn"}}))))
