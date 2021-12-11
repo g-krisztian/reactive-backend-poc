@@ -1,6 +1,6 @@
 (ns poc.core-test
   (:require [clojure.test :refer :all]
-            [clojurail.core :refer :all]))
+            [poc.core :refer :all]))
 
 (deftest a-test
   (testing "FIXME, I fail."
