@@ -1,6 +1,5 @@
 (ns poc.router
-  (:require [clojure.edn :as edn]
-            [clojure.string :as str]))
+  (:require [clojure.edn :as edn]))
 
 (defn- read-val
   [val]
@@ -13,11 +12,12 @@
 (defn router
   [routes uri method]
   (loop [routes routes uri-seq (re-seq #"\/[\-a-zA-Z0-9._~!$&'()*+,;=:@]*" uri) actions []]
-    (let [parameter (when (seq routes) (re-find #"/:.*" (ffirst routes)))
-          route (filter #(#{(or parameter (first uri-seq))} (first %)) routes)
-          [[uri act & sub-routes]] route
-          act (if (map? act) (get act method) act)]
-      (cond
-        (empty? uri-seq) actions
-        (and uri act) (recur sub-routes (rest uri-seq) (into actions (init act (first uri-seq))))
-        :else (throw (ex-info "Not found" {:status 404 :body "not found"}))))))
+    (if (empty? uri-seq)
+      actions
+      (let [parameter (re-find #"/:.*" (ffirst routes))
+            route (filter #(#{(or parameter (first uri-seq))} (first %)) routes)
+            [[uri act & sub-routes]] route
+            act (if (map? act) (get act method) act)]
+        (if (and uri act)
+          (recur sub-routes (rest uri-seq) (into actions (init act (first uri-seq))))
+          (throw (ex-info "Not found" {:status 404 :body "not found"})))))))
