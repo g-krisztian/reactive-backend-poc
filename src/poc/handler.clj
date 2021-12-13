@@ -38,8 +38,8 @@
              (doseq [[k _] subscribers]
                (add-watch ctx k (watcher-fn dependencies subscribers)))
              (reset! ctx {:request request})
-             (deref response-promise)) ;1000 {:status 500
-                                      ;      :body   "request timed out"))
+             (deref response-promise 6000 {:status 500
+                                           :body   "request timed out"}))
            (catch Exception e (ex-data e))))))
 
 

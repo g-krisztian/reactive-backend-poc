@@ -14,23 +14,31 @@
   [uri]
   (re-seq #"\/[\-a-zA-Z0-9._~!$&'()*+,;=:@]*" uri))
 
-
 (defn extract
   [uri]
-  (edn/read-string (second (re-find #"\/([\-a-zA-Z0-9._~!$&'()*+,;=:@]*)" uri))))
+  (->> uri
+       (re-find #"\/([\-a-zA-Z0-9._~!$&'()*+,;=:@]*)")
+       second
+       edn/read-string))
 
 (defn uri->regex
   [uri]
   (re-pattern
-    (apply str (concat (map (fn [v] (if (keyword? (extract v)) "/([-a-zA-Z0-9._~!$&'()*+,;=:@]*)" v)) (uri->seq uri)) ["$"]))))
+    (apply str
+           (concat
+             (map
+               (fn [v] (if (keyword? (extract v)) "/([-a-zA-Z0-9._~!$&'()*+,;=:@]*)" v))
+               (uri->seq uri))
+             ["$"]))))
 
 (defn uri->keys
   [uri]
-  (reduce (fn [acc v]
-            (if (keyword? (extract v))
-              (conj acc v)
-              acc))
-          [] (uri->seq uri)))
+  (reduce
+    (fn [acc v]
+      (if (keyword? (extract v))
+        (conj acc v)
+        acc))
+    [] (uri->seq uri)))
 
 (defn uri-match
   [[route act] uri]
@@ -39,24 +47,21 @@
     (cond
       (nil? m) nil
       (nil? ks) [act {}]
-      :else [act (into {} (map (fn [k v] [(extract k) (edn/read-string v)]) ks (rest m)))])))
+      :else [act (into {} (map (fn [k v]
+                                 [(extract k) (edn/read-string v)])
+                               ks (rest m)))])))
 
 (defn ppr
   ([routes]
-   (ppr [] routes))
-  ([acc routes]
-   (reduce (fn [acc route]
-             (let [[uri act & sub-routes] route]
-               (println "acc" acc)
-               (println "\nuas" uri act sub-routes)
-               (cond
-                 (empty? sub-routes) (conj acc [uri act sub-routes])
-                 :else (let [sr (mapv (fn [[u a & s]]
-                                        (concat [(str uri u) (concat act a)] s)) sub-routes)]
-                         (println "sr" sr)
-                         (concat acc [[uri act]] (ppr sr))))))
-
-           acc routes)))
+   (reduce
+     (fn [acc route]
+       (let [[uri act & sub-routes] route]
+         (cond
+           (empty? sub-routes) (conj acc [uri act sub-routes])
+           :else (let [sr (mapv (fn [[u a & s]]
+                                  (concat [(str uri u) (concat act a)] s)) sub-routes)]
+                   (concat acc [[uri act]] (ppr sr))))))
+     [] routes)))
 
 (defn router
   [routes]
