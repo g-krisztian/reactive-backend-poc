@@ -27,4 +27,5 @@
                           :request-method :put
                           :params         {:label "Example todo"}})]
     (is (= "Example todo"
-           (get-in result [:body :label])))))
+           (get-in result [:body :label])))
+    (is (uuid? (get-in result [:body :id])))))
