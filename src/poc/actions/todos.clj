@@ -3,20 +3,15 @@
 
 (defonce todos-db (atom {}))
 
+(def view
+  [:response-data
+   (fn [_ rd]
+     {:response {:body rd}})])
+
 (def todos
   [:request
    (fn [_ _]
      {:response-data @todos-db})])
-
-(def view-all
-  [:response-data
-   (fn [_ rd]
-     {:response {:body rd}})])
-
-(def view-one
-  [:response-data
-   (fn [_ rd]
-     {:response {:body rd}})])
 
 (def add-todo
   [:request
