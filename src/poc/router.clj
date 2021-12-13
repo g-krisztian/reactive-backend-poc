@@ -63,18 +63,23 @@
                    (concat acc [[uri act]] (ppr sr))))))
      [] routes)))
 
+(defn not-found
+  []
+  (throw (ex-info "Not found" {:status 404 :body "not found"})))
+
 (defn router
   [routes]
   (let [rr (ppr routes)]
     (fn [uri method]
-      (let [valid? (seq (remove nil? (mapv #(uri-match % uri) rr)))]
+      (let [valid? (remove nil? (map #(uri-match % uri) rr))]
         (case (count valid?)
-          0 (throw (ex-info "Not found" {:status 404 :body "not found"}))
-          1 (let [[act params] (first valid?)
-                  acts (or (seq (remove nil? (mapcat (fn [[k v]]
-                                                       (if (and k (fn? v))
-                                                         [[k v]]
-                                                         (when (= k method) v))) act)))
-                           (throw (ex-info "Not found" {:status 404 :body "not found"})))]
-              (init acts params))
+          0 (not-found)
+          1 (let [[[act params]] valid?
+                  acts (->> (mapcat (fn [[k v]]
+                                      (if (and k (fn? v))
+                                        [[k v]]
+                                        (when (= k method) v))) act)
+                            (remove nil?)
+                            seq)]
+              (if acts (init acts params) (not-found)))
           (throw (ex-info "Invalid routing" {:status 500 :body "Invalid routing configuration"})))))))

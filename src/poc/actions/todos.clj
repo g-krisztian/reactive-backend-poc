@@ -21,7 +21,6 @@
 (def add-todo
   [:request
    (fn [_ req]
-     (prn req)
      (let [id (UUID/randomUUID)
            td (get (swap! todos-db assoc id (assoc (:params req) :id id)) id)]
        {:response-data td}))])
