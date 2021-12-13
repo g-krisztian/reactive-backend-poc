@@ -41,5 +41,3 @@
              (deref response-promise 6000 {:status 500
                                            :body   "request timed out"}))
            (catch Exception e (ex-data e))))))
-
-

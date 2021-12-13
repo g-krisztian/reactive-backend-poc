@@ -1,17 +1,17 @@
 (ns poc.router-test
   (:require [clojure.test :refer :all]
-            [poc.router :refer [router]]
-            [poc.routes :refer :all]))
+            [poc.actions.todos :refer :all]
+            [poc.router :refer [router]]))
+
+(def routes
+  [["/todo" {:get [todos view-all]}
+    ["/:id" {:get [[get-one-todo :id] view-one]}
+     ["/toggle-mark" {:post [[toggle-todo :id] view-one]}]
+     ["/mark/:mark" {:post [[set-todo :id :mark] view-one]}]]]])
 
 (def router* (router routes))
 
 (deftest router-test
-  (is (= [posts view-all] (router* "/todo" :get)))
+  (is (= [todos view-all] (router* "/todo" :get)))
   (is (thrown-with-msg? Exception #"Not found" (router* "/todo" :post)))
-  (is (= api (router* "/api" :get)))
-  (is (= api (router* "/api" :post)))
-  (is (= api (router* "/api" :delete)))
-  (is (= (concat api message) (router* "/api/message" :get)))
-  (is (= (concat api context) (router* "/api/ctx" :get)))
-  (is (thrown-with-msg? Exception #"Not found" (router* "/api/ctx/something" :post)))
-  (is (= (conj api image) (router* "/api/image" :get))))
+  (is (thrown-with-msg? Exception #"Not found" (router* "/api/ctx/something" :post))))

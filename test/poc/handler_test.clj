@@ -7,19 +7,24 @@
 (def handler* (handler {} routes))
 
 (deftest use-id
-  (is (= {:body {:post 0, :req {:uri "/todo/0", :request-method :get}}}
+  (is (= {:status 404, :body "Todo 0 not found"}
          (handler*
            {:uri            "/todo/0"
             :request-method :get})))
-
   (is (boolean?
         (get-in (handler*
                   {:uri            "/todo/100/toggle-mark"
                    :request-method :post})
                 [:body
-                 100
                  :marked])))
-  (is (= {:body {100 {:marked true}}}
-        (handler*
-          {:uri            "/todo/100/mark/true"
-           :request-method :post}))))
+
+  (is (= {:body {:marked true}}
+         (handler*
+           {:uri            "/todo/100/mark/true"
+            :request-method :post})))
+
+  (let [result (handler* {:uri            "/todo"
+                          :request-method :put
+                          :params         {:label "Example todo"}})]
+    (is (= "Example todo"
+           (get-in result [:body :label])))))
