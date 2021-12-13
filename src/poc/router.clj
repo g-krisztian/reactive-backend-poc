@@ -1,23 +1,75 @@
 (ns poc.router
-  (:require [clojure.edn :as edn]))
+  (:require
+    [poc.routes :refer :all]
+    [clojure.edn :as edn]))
 
-(defn- read-val
-  [val]
-  (edn/read-string (subs val 1)))
+(defn init [actions parameters]
+  (map (fn [[k & v]]
+         (if (fn? k)
+           (apply k (map parameters v))
+           (reduce conj [k] v)))
+       actions))
 
-(defn- init [act val]
-  (map (fn [a]
-         (if (fn? a) (a (read-val val)) a)) act))
+(defn uri->seq
+  [uri]
+  (re-seq #"\/[\-a-zA-Z0-9._~!$&'()*+,;=:@]*" uri))
+
+
+(defn extract
+  [uri]
+  (edn/read-string (second (re-find #"\/([\-a-zA-Z0-9._~!$&'()*+,;=:@]*)" uri))))
+
+(defn uri->regex
+  [uri]
+  (re-pattern
+    (apply str (concat (map (fn [v] (if (keyword? (extract v)) "/([-a-zA-Z0-9._~!$&'()*+,;=:@]*)" v)) (uri->seq uri)) ["$"]))))
+
+(defn uri->keys
+  [uri]
+  (reduce (fn [acc v]
+            (if (keyword? (extract v))
+              (conj acc v)
+              acc))
+          [] (uri->seq uri)))
+
+(defn uri-match
+  [[route act] uri]
+  (let [m (re-find (uri->regex route) uri)
+        ks (seq (uri->keys route))]
+    (cond
+      (nil? m) nil
+      (nil? ks) [act {}]
+      :else [act (into {} (map (fn [k v] [(extract k) (edn/read-string v)]) ks (rest m)))])))
+
+(defn ppr
+  ([routes]
+   (ppr [] routes))
+  ([acc routes]
+   (reduce (fn [acc route]
+             (let [[uri act & sub-routes] route]
+               (println "acc" acc)
+               (println "\nuas" uri act sub-routes)
+               (cond
+                 (empty? sub-routes) (conj acc [uri act sub-routes])
+                 :else (let [sr (mapv (fn [[u a & s]]
+                                        (concat [(str uri u) (concat act a)] s)) sub-routes)]
+                         (println "sr" sr)
+                         (concat acc [[uri act]] (ppr sr))))))
+
+           acc routes)))
 
 (defn router
-  [routes uri method]
-  (loop [routes routes uri-seq (re-seq #"\/[\-a-zA-Z0-9._~!$&'()*+,;=:@]*" uri) actions []]
-    (if (empty? uri-seq)
-      actions
-      (let [parameter (re-find #"/:.*" (ffirst routes))
-            route (filter #(#{(or parameter (first uri-seq))} (first %)) routes)
-            [[uri act & sub-routes]] route
-            act (if (map? act) (get act method) act)]
-        (if (and uri act)
-          (recur sub-routes (rest uri-seq) (into actions (init act (first uri-seq))))
-          (throw (ex-info "Not found" {:status 404 :body "not found"})))))))
+  [routes]
+  (let [rr (ppr routes)]
+    (fn [uri method]
+      (let [valid? (seq (remove nil? (mapv #(uri-match % uri) rr)))]
+        (case (count valid?)
+          0 (throw (ex-info "Not found" {:status 404 :body "not found"}))
+          1 (let [[act params] (first valid?)
+                  acts (or (seq (remove nil? (mapcat (fn [[k v]]
+                                                       (if (and k (fn? v))
+                                                         [[k v]]
+                                                         (when (= k method) v))) act)))
+                           (throw (ex-info "Not found" {:status 404 :body "not found"})))]
+              (init acts params))
+          (throw (ex-info "Invalid routing" {:status 500 :body "Invalid routing configuration"})))))))

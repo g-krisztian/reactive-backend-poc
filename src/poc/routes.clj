@@ -76,6 +76,8 @@
    (fn [_ rd]
      {:response {:body rd}})])
 
+(defonce todos (atom {}))
+
 (defn get-one-post
   [post-id]
   [:request
@@ -83,9 +85,24 @@
      {:response-data {:post post-id
                       :req  req}})])
 
+(defn toggle-post
+  [post-id]
+  [:request
+   (fn [_ _]
+     {:response-data (swap! todos update-in [post-id :marked] not)})])
+
+(defn set-post
+  [post-id toggled]
+  [:request
+   (fn [_ _]
+     {:response-data (swap! todos assoc-in [post-id :marked] toggled)})])
+
+
 (def routes
   [["/todo" {:get [posts view-all]}
-    ["/:id" {:get [(partial get-one-post) view-one]}]]
+    ["/:id" {:get [[get-one-post :id] view-one]}
+     ["/toggle-mark" {:post [[toggle-post :id] view-one]}]
+     ["/mark/:mark" {:post [[set-post :id :mark] view-one]}]]]
    ["/api" api
     ["/message" message]
     ["/ctx" context]

@@ -1,14 +1,7 @@
 (ns poc.handler
   (:require
+    [poc.util :refer [deep-merge]]
     [poc.router :refer [router]]))
-
-(defn deep-merge [& maps]
-  (apply merge-with
-         (fn [& args]
-           (if (every? map? args)
-             (apply deep-merge args)
-             (last args)))
-         maps))
 
 (defn watcher-fn
   [dependencies subscribers]
@@ -35,17 +28,18 @@
 
 (defn handler
   [dependencies routes]
-  (fn [request]
-    (try (let [{:keys [:uri :request-method]} request
-               actions (router routes uri request-method)
-               ctx (atom {})
-               response-promise (promise)
-               subscribers (reduce subscribe {} (conj actions (deliver-response response-promise)))]
-           (doseq [[k _] subscribers]
-             (add-watch ctx k (watcher-fn dependencies subscribers)))
-           (reset! ctx {:request request})
-           (deref response-promise)) ;1000 {:status 500
-                                    ;      :body   "request timed out"))
-         (catch Exception e (ex-data e)))))
+  (let [router* (router routes)]
+    (fn [request]
+      (try (let [{:keys [:uri :request-method]} request
+                 actions (router* uri request-method)
+                 ctx (atom {})
+                 response-promise (promise)
+                 subscribers (reduce subscribe {} (conj actions (deliver-response response-promise)))]
+             (doseq [[k _] subscribers]
+               (add-watch ctx k (watcher-fn dependencies subscribers)))
+             (reset! ctx {:request request})
+             (deref response-promise)) ;1000 {:status 500
+                                      ;      :body   "request timed out"))
+           (catch Exception e (ex-data e))))))
 
 
