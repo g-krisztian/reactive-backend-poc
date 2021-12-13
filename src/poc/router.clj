@@ -1,6 +1,5 @@
 (ns poc.router
   (:require
-    [poc.routes :refer :all]
     [clojure.edn :as edn]))
 
 (defn init [actions parameters]
@@ -69,12 +68,15 @@
 
 (defn router
   [routes]
-  (let [rr (ppr routes)]
+  (let [length-grouped-routes (group-by #(-> % first uri->seq count) (ppr routes))]
     (fn [uri method]
-      (let [valid? (remove nil? (map #(uri-match % uri) rr))]
-        (case (count valid?)
+      (let [matching-routes (->> uri uri->seq count
+                                 (get length-grouped-routes)
+                                 (map #(uri-match % uri))
+                                 (remove nil?))]
+        (case (count matching-routes)
           0 (not-found)
-          1 (let [[[act params]] valid?
+          1 (let [[[act params]] matching-routes
                   acts (->> (mapcat (fn [[k v]]
                                       (if (and k (fn? v))
                                         [[k v]]
