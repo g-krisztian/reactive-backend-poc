@@ -1,7 +1,8 @@
 (ns poc.handler
   (:require
+    [poc.router :refer [router]]
     [poc.util :refer [deep-merge]]
-    [poc.router :refer [router]]))
+    [poc.util :as util]))
 
 (defn watcher-fn
   [dependencies subscribers]
@@ -40,4 +41,6 @@
              (reset! ctx {:request request})
              (deref response-promise 6000 {:status 500
                                            :body   "request timed out"}))
-           (catch Exception e (ex-data e))))))
+           (catch Exception e (or (ex-data e)
+                                  {:status 500
+                                   :body (.getMessage e)}))))))

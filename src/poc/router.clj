@@ -1,11 +1,13 @@
 (ns poc.router
   (:require
-    [clojure.edn :as edn]))
+    [clojure.edn :as edn]
+    [poc.util :as util]))
 
-(defn init [actions parameters]
+(defn init
+  [actions parameters]
   (map (fn [[k & v]]
          (if (fn? k)
-           (apply k (map parameters v))
+           (apply (util/unpack-var k) (map parameters v))
            (reduce conj [k] v)))
        actions))
 
@@ -68,7 +70,7 @@
 
 (defn router
   [routes]
-  (let [length-grouped-routes (group-by #(-> % first uri->seq count) (ppr routes))]
+  (let [length-grouped-routes (group-by #(-> % first uri->seq count) (ppr (util/unpack-var routes)))]
     (fn [uri method]
       (let [matching-routes (->> uri uri->seq count
                                  (get length-grouped-routes)
@@ -82,6 +84,7 @@
                                         [[k v]]
                                         (when (= k method) v))) act)
                             (remove nil?)
+                            (map util/unpack-var)
                             seq)]
               (if acts (init acts params) (not-found)))
           (throw (ex-info "Invalid routing" {:status 500 :body "Invalid routing configuration"})))))))

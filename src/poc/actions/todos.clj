@@ -4,41 +4,47 @@
 (defonce todos-db (atom {}))
 
 (def view
-  [:response-data
+  [:db-response
    (fn [_ rd]
-     {:response {:body rd}})])
+     (if (seq rd) {:response {:body rd}}
+                  {:response {:status 404
+                              :body "not found"}}))])
+
+(defn ->todos [m]
+  (select-keys m [:id :label :marked]))
 
 (def todos
   [:request
    (fn [_ _]
-     {:response-data @todos-db})])
+     {:query {:select [:*]
+              :from   [:todos]}})])
 
 (def add-todo
   [:request
-   (fn [_ req]
-     (let [id (UUID/randomUUID)
-           td (get (swap! todos-db assoc id (assoc (:params req) :id id)) id)]
-       {:response-data td}))])
+   (fn [_ {params :params}]
+     (let [id (rand-int Integer/MAX_VALUE)]
+       {:query {:insert-into [:todos]
+                :values      [(->todos (assoc params :id id))]}}))])
 
-(defn get-one-todo
+(defn select-todo
   [todo-id]
   [:request
    (fn [_ _]
-     (if-let [td (get @todos-db todo-id)]
-       {:response-data td}
-       (throw (ex-info "Not found" {:status 404
-                                    :body (format "Todo %s not found" todo-id)}))))])
+     {:query {:where [:= :id todo-id]}})])
+
 
 (defn toggle-todo
   [todo-id]
   [:request
    (fn [_ _]
-     {:response-data (-> (swap! todos-db update-in [todo-id :marked] not)
-                         (get todo-id))})])
+     {:query {:update [:todos]
+              :where  [:= :id todo-id]
+              :set    {:marked [:not :marked]}}})])
 
 (defn set-todo
   [todo-id toggled]
   [:request
    (fn [_ _]
-     {:response-data (-> (swap! todos-db assoc-in [todo-id :marked] toggled)
-                         (get todo-id))})])
+     {:query {:update [:todos]
+              :where  [:= :todos.id todo-id]
+              :set    {:marked toggled}}})])

@@ -1,5 +1,6 @@
 (ns poc.actions.common
   (:require [ring.middleware.cookies :as cookies]
+            [poc.database.core :as db]
             [ring.middleware.params :as middleware.params]))
 
 (def cookies

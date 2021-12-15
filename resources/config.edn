@@ -1,0 +1,12 @@
+{:migratus/store                :database
+ :migratus/migration-dir        "migrations"
+ :migratus/init-in-transaction? false
+ :migratus/migration-table-name "migrations"
+ :database/port                 5433
+ :database/dbname               "todo"
+ :database/host                 "localhost"
+ :database/dbtype               "postgresql"
+ :database/user                 "postgres"
+ :database/password             "postgres"
+ :something                     {:key1 "val1"
+                                 :key2 "val2"}}
