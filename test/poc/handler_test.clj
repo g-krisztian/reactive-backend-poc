@@ -28,3 +28,9 @@
                      {:uri            (format "/todo/%d/toggle-mark" todo-id)
                       :request-method :post})
                    [:body 0 :todos/marked])))))
+
+(deftest echo
+  (is (= {:status 200, :body {:uri "/echo", :request-method :get}}
+         (handler*
+           {:uri            (str "/echo")
+            :request-method :get}))))

@@ -7,7 +7,7 @@
   [actions parameters]
   (map (fn [[k & v]]
          (if (fn? k)
-           (apply (util/unpack-var k) (map parameters v))
+           (apply k (map parameters v))
            (reduce conj [k] v)))
        actions))
 
@@ -68,6 +68,28 @@
   []
   (throw (ex-info "Not found" {:status 404 :body "not found"})))
 
+(defn deep-deref-vars
+  [s]
+  (reduce (fn [acc v]
+            (cond
+              (var? v) (conj acc @v)
+              (vector? v) (conj acc (deep-deref-vars v))
+              :else (conj acc v)))
+          [] s))
+
+(defn deep-ref-vars
+  [s]
+  (reduce (fn [acc v]
+            (cond
+              (fn? v) (conj acc (var-get v))
+              (vector? v) (conj acc (deep-ref-vars v))
+              :else (conj acc v)))
+          [] s))
+
+(defn def-routes
+  [routes]
+  (deep-ref-vars routes))
+
 (defn router
   [routes]
   (let [length-grouped-routes (group-by #(-> % first uri->seq count) (ppr (util/unpack-var routes)))]
@@ -79,12 +101,13 @@
         (case (count matching-routes)
           0 (not-found)
           1 (let [[[act params]] matching-routes
-                  acts (->> (mapcat (fn [[k v]]
+                  acts (->> (deep-deref-vars act)
+                            (mapcat (fn [[k v]]
                                       (if (and k (fn? v))
                                         [[k v]]
-                                        (when (= k method) v))) act)
+                                        (when (= k method) v))))
                             (remove nil?)
-                            (map util/unpack-var)
                             seq)]
+
               (if acts (init acts params) (not-found)))
           (throw (ex-info "Invalid routing" {:status 500 :body "Invalid routing configuration"})))))))
