@@ -1,10 +1,10 @@
 (ns poc.handler
   (:require
     [poc.router :refer [router]]
-    [poc.util :refer [deep-merge]]
-    [poc.util :as util]))
+    [poc.util :refer [deep-merge]]))
 
 (defn watcher-fn
+  "If key referenced value changed, then executes all functions subscribed to the key"
   [dependencies subscribers]
   (fn [key watched old-state new-state]
     (let [oldv (get old-state key)
@@ -16,6 +16,7 @@
           (reset! watched rs))))))
 
 (defn deliver-response
+  "Delivers the response to a promise, when its appears."
   [response-promise]
   [:response
    (fn [_ new-state]
@@ -23,11 +24,13 @@
      nil)])
 
 (defn subscribe
+  "Collecting actions and watcher keywords."
   [subscribers [k f]]
   (let [subs (get subscribers k [])]
     (assoc subscribers k (conj subs f))))
 
 (defn handler
+  "Get actions from routers and subscribes those to an atom."
   [dependencies routes]
   (let [router* (router routes)]
     (fn [request]

@@ -11,6 +11,6 @@
     [["/echo" {:get [echo]}]
      ["/todo" {:get [todos db/execute view]
                :put [params add-todo db/execute view]}
-      ["/:id" {:get [[select-todo :id] db/execute view]}
-       ["/toggle-mark" {:post [[toggle-todo :id] db/execute view]}]
-       ["/mark/:mark" {:post [[set-todo :id :mark] db/execute view]}]]]]))
+      ["/:id" {:get [[select-todo :id] db/execute view]}    ; :id is resolved by router
+       ["/toggle-mark" {:post [[toggle-todo :id] db/execute view]}] ; :id is resolved by router
+       ["/mark/:mark" {:post [[set-todo :id :mark] db/execute view]}]]]])) ; :id and :mark are resolved by router

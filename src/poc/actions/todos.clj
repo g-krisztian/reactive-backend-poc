@@ -1,4 +1,7 @@
-(ns poc.actions.todos)
+(ns poc.actions.todos
+  "First element of the vector is referring to the key to where to subscribe on the state atom
+  Second element is the function to execute when the key's value changing
+  Actions are executed in order of definition, results are merged")
 
 (def echo
   [:request
@@ -29,12 +32,14 @@
               :values      [(->todos params)]}})])
 
 (defn select-todo
+  "this kind of action is initialized on routing process from route parameters"
   [todo-id]
   [:request
    (fn [_ _]
      {:query {:where [:= :id todo-id]}})])
 
 (defn toggle-todo
+  "this kind of action is initialized on routing process from route parameters"
   [todo-id]
   [:request
    (fn [_ _]
@@ -43,6 +48,7 @@
               :set    {:marked [:not :marked]}}})])
 
 (defn set-todo
+  "this kind of action is initialized on routing process from route parameters"
   [todo-id toggled]
   [:request
    (fn [_ _]

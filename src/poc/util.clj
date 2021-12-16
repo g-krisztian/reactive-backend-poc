@@ -7,7 +7,3 @@
              (apply deep-merge args)
              (last args)))
          maps))
-
-(defn unpack-var
-  [var]
-  (if (var? var) @var var))

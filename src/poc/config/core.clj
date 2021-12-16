@@ -1,8 +1,9 @@
 (ns poc.config.core
-  (:require [clojure.string :as str]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [poc.util :as util]))
+  (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
+    [clojure.string :as str]
+    [poc.util :as util]))
 
 (def x-name (comp keyword name))
 (def x-namespace (comp keyword namespace))
@@ -39,4 +40,5 @@
     (util/deep-merge deep-file deep-system deep-override)))
 
 (def config
+  "Customized config resolver for support both name-spaced and deep configuration maps"
   (memoize config*))
