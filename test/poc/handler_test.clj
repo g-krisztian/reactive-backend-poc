@@ -18,16 +18,19 @@
     (is (= "Example todo"
            (get-in result [:body 0 :todos/label])))
     (is (number? todo-id))
-    (is (= true
-           (-> (handler*
-                 {:uri            (format "/todo/%d/mark/true" todo-id)
-                  :request-method :post})
-               (get-in [:body 0 :todos/marked]))))
-    (is (= false
-           (get-in (handler*
-                     {:uri            (format "/todo/%d/toggle-mark" todo-id)
-                      :request-method :post})
-                   [:body 0 :todos/marked])))))
+    (is (false? (get-in result [:body 0 :todos/marked])))
+    (testing "Mark todo item marked"
+      (is (= true
+             (-> (handler*
+                   {:uri            (format "/todo/%d/mark/true" todo-id)
+                    :request-method :post})
+                 (get-in [:body 0 :todos/marked])))))
+    (testing "Toggle todo item marked"
+      (is (= false
+             (get-in (handler*
+                       {:uri            (format "/todo/%d/toggle-mark" todo-id)
+                        :request-method :post})
+                     [:body 0 :todos/marked]))))))
 
 (deftest echo
   (is (= {:status 200, :body {:uri "/echo", :request-method :get}}

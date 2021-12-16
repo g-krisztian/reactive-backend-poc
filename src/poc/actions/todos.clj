@@ -25,9 +25,8 @@
 (def add-todo
   [:request
    (fn [_ {params :params}]
-     (let [id (rand-int Integer/MAX_VALUE)]
-       {:query {:insert-into [:todos]
-                :values      [(->todos (assoc params :id id))]}}))])
+     {:query {:insert-into [:todos]
+              :values      [(->todos params)]}})])
 
 (defn select-todo
   [todo-id]

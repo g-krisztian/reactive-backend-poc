@@ -1,5 +1,5 @@
 CREATE TABLE todos (
-    id int,
+    id SERIAL,
     label varchar,
-    marked boolean
+    marked boolean DEFAULT false
 );
